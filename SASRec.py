@@ -6,7 +6,7 @@ import numpy as np
 from sklearn.preprocessing import LabelEncoder
 
 
-# 1. 🔹 Chargement du dataset1
+# 1. 🔹 Chargement du dataset 1
 df = pd.read_csv("interactions200K_collab_V2.csv")
 
 # 2. 🔹 Tri par utilisateur et par timestep
