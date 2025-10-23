@@ -58,15 +58,15 @@ class TransformerRecModel(nn.Module):
     def __init__(self, item_count, d_model=64, nhead=4, num_layers=2, dropout=0.1):
         super().__init__()
         self.embedding = nn.Embedding(item_count, d_model, padding_idx=0)
-        encoder_layer = nn.TransformerEncoderLayer(d_model=d_model, nhead=nhead, dropout=dropout)
+        encoder_layer = nn.TransformerEncoderLayer(d_model=d_model, nhead=nhead, dropout=dropout, batch_first=True)
         self.transformer = nn.TransformerEncoder(encoder_layer, num_layers=num_layers)
         self.output = nn.Linear(d_model, item_count)
 
     def forward(self, x):
-        emb = self.embedding(x)  # [batch_size, seq_len, d_model]
-        emb = emb.permute(1, 0, 2)  # [seq_len, batch_size, d_model]
-        out = self.transformer(emb)  # [seq_len, batch_size, d_model]
-        out = out[-1]  # dernier token: [batch_size, d_model]
+        emb = self.embedding(x)               # [batch, seq, d_model]
+        padding_mask = (x == 0)               # True on padding tokens
+        out = self.transformer(emb, src_key_padding_mask=padding_mask)
+        out = out[:, -1, :]                   # last token per batch
         return self.output(out)
 
 model = TransformerRecModel(item_count)
@@ -77,7 +77,7 @@ model = model.to(device)
 optimizer = torch.optim.Adam(model.parameters(), lr=0.001)
 loss_fn = nn.CrossEntropyLoss()
 
-for epoch in range(5):
+for epoch in range(2):
     model.train()
     total_loss = 0
     correct, total = 0, 0
@@ -108,6 +108,7 @@ def recommend_next(session_items, model, item_encoder, max_len=10):
     X = torch.tensor([padded]).to(device)
     with torch.no_grad():
         scores = model(X)
+        
         top_item_id = torch.argmax(scores, dim=-1).item()
         return item_encoder.inverse_transform([top_item_id])[0]
 
